@@ -1,0 +1,217 @@
+# Sprint29 Architecture
+
+---
+
+# Design Philosophy
+
+Simple today.
+
+Scalable tomorrow.
+
+Never over-engineer.
+
+---
+
+# Feature Architecture
+
+src/
+
+app/
+
+features/
+
+shared/
+
+services/
+
+lib/
+
+config/
+
+types/
+
+public/
+
+---
+
+# Folder Responsibilities
+
+features/
+
+Contains independent application modules.
+
+Example
+
+auth/
+
+missions/
+
+planner/
+
+dashboard/
+
+analytics/
+
+ai/
+
+shared/
+
+Reusable UI components.
+
+services/
+
+Communication with database and AI.
+
+lib/
+
+Business logic.
+
+config/
+
+Application configuration.
+
+types/
+
+Shared types/interfaces.
+
+---
+
+# Database V1
+
+Users
+
+Missions
+
+Milestones
+
+Weeks
+
+Tasks
+
+Reflections
+
+---
+
+Relationships
+
+User
+
+↓
+
+Mission
+
+↓
+
+Milestone
+
+↓
+
+Task
+
+↓
+
+Week
+
+↓
+
+Reflection
+
+---
+
+# Layered Architecture
+
+UI
+
+↓
+
+Service Layer
+
+↓
+
+Database / AI
+
+React components never directly communicate with Supabase or AI.
+
+---
+
+# AI Architecture
+
+Application
+
+↓
+
+Priority Calculator
+
+↓
+
+AI Service
+
+↓
+
+Claude
+
+AI is an enhancement layer.
+
+Application must continue functioning without AI.
+
+---
+
+# Sprint 0 Architecture Decisions
+
+## Supabase Client Split
+
+Browser and server Supabase clients are separated into two files:
+
+- supabase-browser.ts — uses createBrowserClient() for client components
+- supabase-server.ts — uses createServerClient() + cookies() for server components
+
+This prevents next/headers (server-only) from leaking into client bundles.
+
+## Auth Strategy
+
+- Google OAuth via Supabase Auth redirect flow
+- Guest Mode via Supabase anonymous auth (signInAnonymously)
+- AuthContext (React Context) for global auth state
+- AuthGuard (client component) for route protection
+- Server-side redirect in root page for initial auth check
+
+## Profiles Table
+
+A public profiles table linked to auth.users via FK. A database trigger
+auto-creates a profile row on user signup (Google or anonymous).
+
+---
+
+# Coding Rules
+
+One component
+
+One responsibility.
+
+One service
+
+One responsibility.
+
+Business logic never belongs inside UI.
+
+Avoid duplicated code.
+
+Keep components small.
+
+Prefer reusable components.
+
+---
+
+# Future Expansion
+
+Future modules should be added as independent features.
+
+Examples
+
+notifications/
+
+calendar/
+
+teams/
+
+No existing feature should require major rewrites.
