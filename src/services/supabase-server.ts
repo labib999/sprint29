@@ -1,10 +1,13 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 /**
- * Creates a Supabase client for use in server components and route handlers.
- * Reads/writes session cookies via Next.js cookies() API.
- * Must NOT be imported from client components (next/headers is server-only).
+ * Creates a read-only Supabase client for server components.
+ * Can read session cookies but cannot modify them.
+ *
+ * Server components cannot call cookieStore.set() in Next.js 15 —
+ * cookie modification is only allowed in Route Handlers and Server Actions.
+ * The setAll callback is intentionally a no-op for this reason.
  */
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
@@ -17,10 +20,8 @@ export async function createServerSupabaseClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
+        setAll() {
+          // Server components cannot set cookies
         },
       },
     }

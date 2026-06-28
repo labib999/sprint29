@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/services/supabase-server";
+import { createRouteHandlerSupabaseClient } from "@/services/supabase-route-handler";
 import { NextResponse } from "next/server";
 
 /**
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const next = searchParams.get("next") ?? "/dashboard";
 
   if (code) {
-    const supabase = await createServerSupabaseClient();
+    const supabase = await createRouteHandlerSupabaseClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
