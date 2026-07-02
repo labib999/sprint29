@@ -69,26 +69,26 @@ export function AIPanel({ missions, weekId, onMutate }: AIPanelProps) {
     <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-purple-900">AI Suggestions</h3>
-        {!isLoading && !hasSuggestions && (
+        {!hasSuggestions && (
           <button
             onClick={handleGetSuggestions}
-            disabled={missions.length === 0}
+            disabled={missions.length === 0 || isLoading}
             className="rounded-lg bg-purple-600 px-3 py-1 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50"
           >
-            Get Suggestions
+            {isLoading ? "Loading..." : "Get Suggestions"}
           </button>
         )}
       </div>
 
-      {isLoading && (
+      {isLoading && !hasSuggestions && (
         <p className="text-sm text-purple-700">Thinking... this may take a moment.</p>
       )}
 
-      {error && !hasSuggestions && (
+      {error && !hasSuggestions && !isLoading && (
         <p className="text-sm text-purple-700">{error}</p>
       )}
 
-      {missions.length === 0 && !isLoading && (
+      {missions.length === 0 && !isLoading && !hasSuggestions && (
         <p className="text-sm text-purple-700">
           Create a mission first — AI needs context to suggest tasks.
         </p>
