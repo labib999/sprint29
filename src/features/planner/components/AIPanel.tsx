@@ -12,6 +12,7 @@ interface AIPanelProps {
 }
 
 export function AIPanel({ missions, weekId, onMutate }: AIPanelProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,17 +21,9 @@ export function AIPanel({ missions, weekId, onMutate }: AIPanelProps) {
   async function handleGetSuggestions() {
     setIsLoading(true);
     setError(null);
-
     const result = await getAISuggestions({ missions, weekId });
-
-    if (result.error) {
-      setError(result.error);
-    }
-
-    if (result.suggestions.length > 0) {
-      setSuggestions(result.suggestions);
-    }
-
+    if (result.error) setError(result.error);
+    if (result.suggestions.length > 0) setSuggestions(result.suggestions);
     setIsLoading(false);
   }
 
@@ -47,7 +40,7 @@ export function AIPanel({ missions, weekId, onMutate }: AIPanelProps) {
       });
       onMutate();
     } catch {
-      // Silently fail — user can retry
+      // silently fail
     }
     setAddingIds((prev) => {
       const next = new Set(prev);
@@ -56,83 +49,109 @@ export function AIPanel({ missions, weekId, onMutate }: AIPanelProps) {
     });
   }
 
-  async function handleAddAll() {
-    for (let i = 0; i < suggestions.length; i++) {
-      await handleAddSuggestion(i, suggestions[i]);
-    }
-    setSuggestions([]);
-  }
-
-  const hasSuggestions = suggestions.length > 0;
-
   return (
-    <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-purple-900">AI Suggestions</h3>
-        {!hasSuggestions && (
-          <button
-            onClick={handleGetSuggestions}
-            disabled={missions.length === 0 || isLoading}
-            className="rounded-lg bg-purple-600 px-3 py-1 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50"
-          >
-            {isLoading ? "Loading..." : "Get Suggestions"}
-          </button>
-        )}
-      </div>
+    <>
+      {/* Floating trigger button */}
+      <button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-700 transition-colors"
+        aria-label="AI Suggestions"
+      >
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </button>
 
-      {isLoading && !hasSuggestions && (
-        <p className="text-sm text-purple-700">Thinking... this may take a moment.</p>
+      {/* Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setIsOpen(false)}
+        />
       )}
 
-      {error && !hasSuggestions && !isLoading && (
-        <p className="text-sm text-purple-700">{error}</p>
-      )}
-
-      {missions.length === 0 && !isLoading && !hasSuggestions && (
-        <p className="text-sm text-purple-700">
-          Create a mission first — AI needs context to suggest tasks.
-        </p>
-      )}
-
-      {hasSuggestions && (
-        <div className="space-y-2">
-          {suggestions.map((s, i) => (
-            <div
-              key={i}
-              className="rounded-lg border border-purple-100 bg-white p-3"
+      {/* Slide-in panel */}
+      <div
+        className={`fixed z-50 transition-transform duration-300 ${
+          isOpen
+            ? "translate-x-0"
+            : "translate-x-full"
+        } top-0 right-0 h-full w-full sm:w-80 bg-[#111111] border-l border-[#1a1a1a] overflow-y-auto`}
+      >
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-white">AI Suggestions</h3>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-[#555] hover:text-white"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{s.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{s.reason}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{s.estimated_hours}h</p>
-                </div>
-                <button
-                  onClick={() => handleAddSuggestion(i, s)}
-                  disabled={addingIds.has(i)}
-                  className="shrink-0 rounded bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 hover:bg-purple-200 disabled:opacity-50"
-                >
-                  {addingIds.has(i) ? "..." : "Add"}
-                </button>
-              </div>
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {suggestions.length === 0 && !isLoading && !error && (
+            <div className="space-y-3">
+              <p className="text-sm text-[#a1a1aa]">
+                Get AI-powered suggestions for what to work on this week.
+              </p>
+              <button
+                onClick={handleGetSuggestions}
+                disabled={missions.length === 0 || isLoading}
+                className="w-full rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {isLoading ? "Thinking..." : "Get Suggestions"}
+              </button>
+              {missions.length === 0 && (
+                <p className="text-xs text-[#555]">
+                  Create a mission first — AI needs context.
+                </p>
+              )}
             </div>
-          ))}
+          )}
 
-          <button
-            onClick={handleAddAll}
-            className="w-full rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
-          >
-            Add All to Week
-          </button>
+          {isLoading && (
+            <div className="space-y-3">
+              <div className="h-16 rounded-lg bg-[#1a1a1a] animate-pulse" />
+              <div className="h-16 rounded-lg bg-[#1a1a1a] animate-pulse" />
+              <div className="h-16 rounded-lg bg-[#1a1a1a] animate-pulse" />
+            </div>
+          )}
 
-          <button
-            onClick={() => setSuggestions([])}
-            className="w-full text-xs text-purple-600 hover:text-purple-700"
-          >
-            Dismiss
-          </button>
+          {error && !isLoading && (
+            <p className="text-sm text-red-500">{error}</p>
+          )}
+
+          {suggestions.length > 0 && (
+            <div className="space-y-2">
+              {suggestions.map((s, i) => (
+                <div key={i} className="rounded-lg bg-[#1a1a1a] p-3">
+                  <p className="text-sm text-white">{s.title}</p>
+                  <p className="text-xs text-[#555] mt-1">{s.reason}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs text-[#555]">{s.estimated_hours}h</span>
+                    <button
+                      onClick={() => handleAddSuggestion(i, s)}
+                      disabled={addingIds.has(i)}
+                      className="rounded bg-brand-600 px-2 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                    >
+                      {addingIds.has(i) ? "..." : "Add"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                onClick={() => { setSuggestions([]); setIsOpen(false); }}
+                className="w-full text-xs text-[#555] hover:text-white py-2"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 }

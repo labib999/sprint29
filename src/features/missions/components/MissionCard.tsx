@@ -1,10 +1,7 @@
 "use client";
 
-import { Card } from "@/shared/components/Card";
-import { Button } from "@/shared/components/Button";
 import { deleteMission } from "@/features/missions/services/missionService";
 import { MilestoneList } from "./MilestoneList";
-import { EditMissionForm } from "./EditMissionForm";
 import type { Mission } from "@/types";
 import { useState } from "react";
 
@@ -15,99 +12,117 @@ interface MissionCardProps {
 
 export function MissionCard({ mission, onMutate }: MissionCardProps) {
   const [showMilestones, setShowMilestones] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
 
-  const totalCount = mission.milestones?.length ?? 0;
-  const completedCount = mission.milestones?.filter((m) => m.completed).length ?? 0;
+  const incomplete = (mission.milestones ?? []).filter((m) => !m.completed);
+  const nextDeadline = incomplete.length > 0
+    ? incomplete
+        .filter((m) => m.deadline)
+        .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())[0]
+    : null;
+
+  const deadlineStr = nextDeadline
+    ? (() => {
+        const days = Math.ceil((new Date(nextDeadline.deadline!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return days <= 0 ? "Overdue" : `${days}d left`;
+      })()
+    : null;
 
   async function handleDelete() {
-    if (!confirm("Delete this mission? This cannot be undone.")) return;
+    if (!confirm("Delete this mission?")) return;
     await deleteMission(mission.id);
     onMutate();
   }
 
   return (
-    <>
-      <Card>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900 truncate">
-                {mission.title}
-              </h3>
-              {mission.status !== "active" && (
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                    mission.status === "completed"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {mission.status}
-                </span>
-              )}
-            </div>
-
-            {mission.description && (
-              <p className="mt-1 text-sm text-gray-600 line-clamp-2">
-                {mission.description}
-              </p>
+    <div className="rounded-lg bg-[#111111]">
+      <button
+        onClick={() => setShowMilestones(!showMilestones)}
+        className="w-full flex items-center justify-between p-4 text-left"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[#555]">
+              {"★".repeat(mission.impact)}{"☆".repeat(5 - mission.impact)}
+            </span>
+            <h3 className="text-sm font-semibold text-white truncate">
+              {mission.title}
+            </h3>
+            {mission.status !== "active" && (
+              <span className="text-xs text-[#555]">({mission.status})</span>
             )}
-
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-              <span>
-                {"★".repeat(mission.impact)}{"☆".repeat(5 - mission.impact)}
-              </span>
-              {mission.default_weekly_hours && (
-                <span>{mission.default_weekly_hours} hrs/week default</span>
-              )}
-              {totalCount > 0 && (
-                <span>
-                  {completedCount}/{totalCount} milestones
-                </span>
-              )}
-            </div>
           </div>
-
-          <div className="flex shrink-0 gap-1">
-            <Button variant="ghost" size="sm" onClick={() => setShowEdit(true)}>
-              Edit
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleDelete}>
-              Delete
-            </Button>
-          </div>
+          {deadlineStr && (
+            <p className="text-xs text-[#555] mt-0.5">
+              {nextDeadline?.title} — {deadlineStr}
+            </p>
+          )}
+          {(mission.milestones ?? []).length > 0 && (
+            <PaceLine milestones={mission.milestones ?? []} />
+          )}
         </div>
+        <div className="flex items-center gap-2 shrink-0 ml-4">
+          <span className="text-xs text-[#555]">
+            {(mission.milestones ?? []).filter((m) => m.completed).length}/{(mission.milestones ?? []).length}
+          </span>
+          <svg
+            className={`h-4 w-4 text-[#555] transition-transform ${showMilestones ? "rotate-180" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
 
-        <button
-          onClick={() => setShowMilestones(!showMilestones)}
-          className="mt-3 text-xs font-medium text-brand-600 hover:text-brand-700"
-        >
-          {showMilestones
-            ? "Hide milestones"
-            : totalCount > 0
-            ? `${totalCount} milestone${totalCount > 1 ? "s" : ""}`
-            : "Add milestones"}
-        </button>
-
-        {showMilestones && (
-          <div className="mt-3 border-t border-gray-100 pt-3">
-            <MilestoneList
-              milestones={mission.milestones ?? []}
-              missionId={mission.id}
-              defaultWeeklyHours={mission.default_weekly_hours}
-              onMutate={onMutate}
-            />
-          </div>
-        )}
-      </Card>
-
-      {showEdit && (
-        <EditMissionForm
-          mission={mission}
-          onClose={() => { setShowEdit(false); onMutate(); }}
-        />
+      {showMilestones && (
+        <div className="border-t border-[#1a1a1a] px-4 pb-4 pt-3">
+          <MilestoneList
+            milestones={mission.milestones ?? []}
+            missionId={mission.id}
+            defaultWeeklyHours={mission.default_weekly_hours}
+            onMutate={onMutate}
+          />
+        </div>
       )}
-    </>
+
+      <div className="px-4 pb-3 flex gap-2">
+        <button
+          onClick={handleDelete}
+          className="text-xs text-[#555] hover:text-red-500"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PaceLine({ milestones }: { milestones: Mission["milestones"] }) {
+  const sorted = (milestones ?? [])
+    .filter((m) => !m.completed && m.hours_planned_total)
+    .sort((a, b) => {
+      const aPct = a.hours_planned_total ? (a.hours_logged_total / a.hours_planned_total) : 0;
+      const bPct = b.hours_planned_total ? (b.hours_logged_total / b.hours_planned_total) : 0;
+      return aPct - bPct;
+    });
+
+  if (sorted.length === 0) return null;
+
+  const worst = sorted[0];
+  const pct = worst.hours_planned_total
+    ? Math.min(worst.hours_logged_total / worst.hours_planned_total, 1)
+    : 0;
+
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <div className="flex-1 h-1 rounded-full bg-[#1a1a1a]">
+        <div
+          className="h-1 rounded-full bg-brand-500 transition-all"
+          style={{ width: `${pct * 100}%` }}
+        />
+      </div>
+      <span className="text-xs text-[#555]">{worst.title}</span>
+    </div>
   );
 }

@@ -1,10 +1,5 @@
 import type { PaceInfo } from "@/types";
 
-/**
- * Computes pace info for a milestone. All values are derived live —
- * nothing is stored or cached. This ensures the pace always reflects
- * the current date and hours logged.
- */
 export function computePace(milestone: {
   deadline: string | null;
   hours_planned_total: number | null;
@@ -49,32 +44,35 @@ export function computePace(milestone: {
 }
 
 export function PaceIndicator({ pace }: { pace: PaceInfo }) {
-  const { hoursPlannedTotal, hoursLoggedTotal, variance, requiredPace, isOverdue } =
-    pace;
+  const { hoursPlannedTotal, hoursLoggedTotal, variance, requiredPace, isOverdue } = pace;
+
+  if (isOverdue) {
+    return (
+      <div className="text-xs text-red-500">
+        Overdue · {Math.max(0, hoursPlannedTotal - hoursLoggedTotal)}h remaining
+      </div>
+    );
+  }
+
+  const pct = hoursPlannedTotal > 0
+    ? Math.min(hoursLoggedTotal / hoursPlannedTotal, 1)
+    : 0;
 
   return (
-    <div className="text-xs text-gray-500">
-      {isOverdue ? (
-        <span className="text-red-600 font-medium">
-          Overdue · {Math.max(0, hoursPlannedTotal - hoursLoggedTotal)}h remaining
-        </span>
-      ) : (
-        <div className="space-y-0.5">
-          <div>
-            Planned: {hoursPlannedTotal}h · Logged: {hoursLoggedTotal}h
-            <span
-              className={
-                variance >= 0 ? " text-green-600" : " text-amber-600"
-              }
-            >
-              {" "}
-              {variance >= 0 ? `Ahead: +${variance}h` : `Behind: ${variance}h`}
-            </span>
-          </div>
-          {requiredPace !== null && (
-            <div>Need ~{requiredPace} hrs/week from here</div>
-          )}
-        </div>
+    <div className="flex items-center gap-2 mt-0.5">
+      <div className="flex-1 h-1 rounded-full bg-[#1a1a1a]">
+        <div
+          className={`h-1 rounded-full transition-all ${
+            variance >= 0 ? "bg-brand-500" : "bg-amber-500"
+          }`}
+          style={{ width: `${pct * 100}%` }}
+        />
+      </div>
+      <span className={`text-xs shrink-0 ${variance >= 0 ? "text-brand-500" : "text-amber-500"}`}>
+        {hoursLoggedTotal}/{hoursPlannedTotal}h
+      </span>
+      {requiredPace !== null && variance < 0 && (
+        <span className="text-xs text-[#555] shrink-0">~{requiredPace}/wk</span>
       )}
     </div>
   );

@@ -29,12 +29,16 @@ The core loop: **Plan → Execute → Reflect → Improve**
 ```
 src/
   app/                   Next.js App Router pages + API routes
+    (app)/               Route group for authenticated pages (shared layout)
+      dashboard/         Dashboard page
+      weekly/            Weekly planner page
+      profile/           Profile page
   features/              Independent feature modules
     auth/                Authentication (Google OAuth + Guest)
     missions/            Mission + Milestone management
     planner/             Weekly planning (Sprint 2)
     ai/                  AI service + prompt templates
-    dashboard/            Dashboard (Sprint 4)
+    dashboard/           Dashboard (Sprint 4)
   shared/                Reusable UI components
   services/              Supabase client factories
   lib/                   Business logic / utilities
@@ -43,6 +47,15 @@ src/
 public/                  Static assets
 supabase/                SQL migrations
 ```
+
+### Route Group `(app)`
+
+All authenticated pages (dashboard, weekly, profile) live under `src/app/(app)/` sharing a single layout in `(app)/layout.tsx` that provides:
+- `AuthGuard` — redirects unauthenticated users to `/login`
+- `Sidebar` — desktop fixed sidebar (240px, visible lg+)
+- `BottomNav` — mobile bottom nav (44px tap targets, visible <lg)
+
+The parentheses do NOT affect URL paths — `/dashboard`, `/weekly`, `/profile` are the actual routes.
 
 ### Data Flow
 
@@ -106,6 +119,8 @@ Supabase clients are split into three files to comply with Next.js 15 server/cli
 | weekly_committed_hours | numeric | Set at creation |
 | hours_planned_total | numeric | Computed once: `weekly_hours × weeks_remaining` |
 | hours_logged_total | numeric | Updated when user logs hours |
+| ai_context | text | (Sprint 2) Raw user notes for AI suggestions |
+| ai_context_expanded | boolean | (Sprint 2) Whether ai_context has been expanded |
 | created_at | timestamptz | |
 | updated_at | timestamptz | |
 
@@ -147,13 +162,20 @@ All tables use Row-Level Security with `auth.uid()` checks. Milestones use a sub
 create policy "Users can view own milestones"
   on public.milestones for select
   using (
-    exists (
-      select 1 from public.missions
-      where missions.id = milestones.mission_id
-      and missions.user_id = auth.uid()
-    )
+    select 1 from public.missions
+    where missions.id = milestones.mission_id
+    and missions.user_id = auth.uid()
   );
 ```
+
+### `computePace()` — Pure Function
+
+Located in `src/features/missions/services/paceService.ts`. Computes:
+
+- `hoursPlannedTotal = weekly_committed_hours × (weeks between creation and deadline)`
+- `variance = hoursLoggedTotal - (weekly_committed_hours × elapsed weeks)`
+- `requiredPace = (hoursPlannedTotal - hoursLoggedTotal) / remaining weeks`
+- `pct = hoursLoggedTotal / hoursPlannedTotal`
 
 ---
 
@@ -186,7 +208,7 @@ create policy "Users can view own milestones"
 ### AuthGuard
 
 - Located at `src/features/auth/components/AuthGuard.tsx`
-- Wraps protected routes
+- Wraps protected routes in `(app)/layout.tsx`
 - Redirects to `/login` if `!isLoading && !user`
 - Returns `null` during loading (no spinner flash)
 
@@ -198,13 +220,55 @@ create policy "Users can view own milestones"
 |---|---|---|---|
 | 0 | ✅ | Next.js + Supabase + Auth + Deploy | User can sign in |
 | 1 | ✅ | Missions + Milestones + Pace tracking | User can fully manage missions |
-| 2 | 🏗️ | Weekly Planner + AI Prioritization | User receives AI recommendations |
-| 3 | ⬜ | Tasks + Reflection | User completes a full week |
-| 4 | ⬜ | Dashboard + Analytics | User understands progress |
+| 2 | ✅ | Weekly Planner + AI Prioritization + Prompt Enhancer | User receives AI recommendations |
+| 3 | ✅ | Tasks + Reflection + Complete Week | User completes a full week |
+| 4 | ✅ | Dashboard + Analytics + Design Overhaul | User understands progress |
 
 ---
 
-## 6. Component Patterns
+## 6. Design System (Dark Theme Overhaul)
+
+### Theme Tokens
+
+| Token | Value | Usage |
+|---|---|---|
+| Page bg | `bg-[#0a0a0a]` | Root layout |
+| Section bg | `bg-[#111111]` | Cards, panels |
+| Elevated bg | `bg-[#1a1a1a]` | Inputs, form containers |
+| Text primary | `text-white` | Headings, body |
+| Text secondary | `text-[#a1a1aa]` | Labels, muted text |
+| Text tertiary | `text-[#555]` | Placeholders, disable state |
+| Brand | `bg-brand-600` / `text-brand-500` / `border-brand-500` | Purple (#8b5cf6) |
+| Error | `text-red-500` + `bg-red-500/10` | Inline error text (no popups) |
+
+- **No borders** on cards — use `bg-[#111]` contrast against `#0a0a0a` page bg
+- **No shadows** except modals (overlay: `bg-black/70`)
+- **Inter font** via `next/font/google` in `src/app/layout.tsx`
+- **Transition** `transition-colors` on interactive elements
+- **Animations** — `scale-in` keyframes for task complete checkmark
+
+### Tailwind Config
+
+Located `tailwind.config.ts`:
+- `brand` as primary color palette (`50-950` from purple)
+- Only one accent color (purple) — never introduce secondary accent colors
+- `Inter` as font family default
+
+### Globals (`src/app/globals.css`)
+
+```css
+@layer base {
+  input, textarea, select {
+    @apply border-[#333] bg-[#1a1a1a] text-white placeholder-[#555]
+      rounded-lg px-3 py-2 text-sm;
+    @apply focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
+  }
+}
+```
+
+---
+
+## 7. Component Patterns
 
 ### Client vs Server Components
 
@@ -231,26 +295,99 @@ useEffect(() => {
 
 After a mutation, the child calls `onMutate()` which increments `refreshKey` → re-runs the fetch effect.
 
-### Modal Pattern
+### Inline Create Form (Milestone)
 
-Modals (CreateMissionForm, EditMissionForm) follow the same structure:
-- Fixed overlay with `bg-black/50`
-- `Card` container centered
-- Close button (✕) in header
-- Props: `onClose: () => void`
-- After success: call `onClose()` + `router.refresh()`
+`CreateMilestoneForm.tsx` — Appears below the milestone list, single column:
+- Title text input
+- Deadline date picker
+- Impact as 5 clickable dots (circle buttons, filled up to selection)
+- Weekly committed hours number input
+- AI Context textarea (optional)
+- Cancel + Add buttons
 
-### Inline Form Pattern
+Props: `{ missionId, defaultWeeklyHours, onClose }`
 
-Inline forms (CreateMilestoneForm, AddTaskForm) follow:
-- Appear below the list when "Add" is clicked
-- Fields compact (no modal)
-- Cancel + Submit buttons
-- Props: `onClose: () => void`
+### Modal Create Form (Mission)
+
+`CreateMissionForm.tsx` — Float-centered modal with dark overlay:
+- Title text input
+- Description textarea
+- Impact as 5 clickable dots (same pattern as milestones)
+- Default hrs/week number input
+- Cancel + Create buttons
+
+Props: `{ onClose }`
+
+After success: calls `onClose()` + `router.refresh()`
+
+### Card
+
+`src/shared/components/Card.tsx` — A simple wrapper:
+- `bg-[#111111]` + `rounded-xl` + `p-5`
+- No borders, no shadows
+- Accepts `className` to extend
+
+### Button
+
+`src/shared/components/Button.tsx` — Named variants:
+- `primary` — `bg-brand-600 text-white hover:bg-brand-700`
+- `secondary` — `border border-[#333] text-white hover:bg-[#1a1a1a]`
+- `ghost` — transparent, `text-[#a1a1aa] hover:text-white`
+- Optional `isLoading` prop (shows spinner, disables)
+
+### Sidebar (Desktop)
+
+`src/shared/components/Sidebar.tsx`
+- Fixed left, 240px wide, visible `lg:flex`
+- Logo + nav items + UserMenu at bottom
+- Uses `<Link>` for navigation
+
+### BottomNav (Mobile)
+
+`src/shared/components/BottomNav.tsx`
+- Fixed bottom, full width, visible `<lg:flex`
+- 4 icon tabs (Dashboard, Weekly, Missions, Profile)
+- 44px minimum tap target height
+- Active state: brand color
+
+### PaceArc (SVG Half-Circle Gauge)
+
+`src/shared/components/PaceArc.tsx`
+- 180° arc opening downward
+- Purple stroke for logged hours, gray for remaining
+- Scales by `viewBox`, responsive
+- Bold "{logged}/{planned}h" inside arc
+- "Pace" label below
+- 180px diameter on desktop, 120px on mobile
+
+### AIPanel (Slide-in Panel)
+
+`src/features/planner/components/AIPanel.tsx`
+- Floating purple button (bottom-right on weekly page)
+- Click opens a slide-in panel:
+  - Desktop: slides from right edge (400px width)
+  - Mobile: slides up as bottom sheet
+- Shows AI suggestions for the active milestone
+- "Ask AI" button triggers `/api/ai/suggest` with current context
+
+### TaskItem
+
+`src/features/planner/components/TaskItem.tsx`
+- Title + estimated hours
+- Complete checkbox with `scale-in` animation on the checkmark
+- On complete: prompts for actual hours via inline input
+- Red inline text for errors (no popups/notifications)
+
+### Pulse Skeleton Loading
+
+All list components (MissionList, MilestoneList, TaskList) show a pulse skeleton while data loads:
+```css
+className="animate-pulse rounded-lg bg-[#1a1a1a]"
+```
 
 ---
 
-## 7. AI Integration Pattern
+## 8. AI Integration Pattern
 
 ### Architecture
 
@@ -261,12 +398,22 @@ Client Component (AIPanel)
       → Groq (llama-3.1-8b-instant)
 ```
 
+### Prompt Enhancer
+
+Before the main suggestion call, raw `ai_context` text from the milestone is expanded via a quick Groq call (system: "You are a goal planning assistant...") into a structured paragraph. The result is stored in the database with `ai_context_expanded = true` so it runs once per milestone.
+
+Flow:
+1. Check if milestone has `ai_context` and `!ai_context_expanded`
+2. If yes, call Groq to expand it into a structured paragraph
+3. Save expanded text back to `ai_context` + set `ai_context_expanded = true`
+4. Build the main prompt using the (now structured) ai_context
+
 ### Key Rules
 
 1. **Prompts live in `src/features/ai/prompts/`** — exported as builder functions (`.ts`), not raw `.txt` files, because `fs.readFileSync` breaks in Vercel's serverless environment
 2. **App works without AI** — AI is an enhancement layer
 3. **AI only recommends** — user always decides
-4. **Graceful degradation** — AI failure shows "unavailable" message, no crash
+4. **Graceful degradation** — AI failure shows inline red error text, app continues
 
 ### Provider: Groq
 
@@ -278,13 +425,11 @@ Client Component (AIPanel)
 
 ```typescript
 // src/features/ai/prompts/weekly-prioritization.ts
-export function buildWeeklyPrompt(missions: Mission[]): string {
+export function buildWeeklyPrompt(mission: Mission): string {
   return `You are Sprint29...
-[prompt content with ${JSON.stringify(missions, null, 2)}]`;
+[prompt content]`;
 }
 ```
-
-Note: Prompts are `.ts` files exporting builder functions, NOT raw `.txt` files read via `fs.readFileSync()`. The latter breaks in Vercel's serverless runtime because the build process doesn't guarantee `.txt` files are available at runtime relative to `process.cwd()`.
 
 ### API Route
 
@@ -294,18 +439,46 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-async function callGroq(prompt: string): Promise<string> {
-  const completion = await groq.chat.completions.create({
-    messages: [{ role: "user", content: prompt }],
-    model: "llama-3.1-8b-instant",
-  });
-  return completion.choices[0]?.message?.content ?? "";
+export async function POST(req: Request) {
+  const { milestoneId, weekStart } = await req.json();
+  // 1. Fetch milestone with ai_context
+  // 2. Expand ai_context if needed
+  // 3. Build prompt with expanded context + existing tasks
+  // 4. Call groq.chat.completions.create
+  // 5. Return suggestions as JSON
 }
 ```
 
 ---
 
-## 8. Key Constants
+## 9. Dashboard Components
+
+Located in `src/features/dashboard/components/`:
+
+### DashboardSummaryCards
+- 3 cards in a row: Current Week Progress, Active Missions, Overall Pace
+- Each shows a title + value (e.g., "4/10h logged") with mini PaceArc or pulse skeleton
+
+### WeeklyTrendChart
+- 4-week bar chart using recharts (BarChart)
+- Purple bars for planned hours, gray bars for logged hours
+- Responsive width
+
+### UpcomingDeadlines
+- Max 5 items, sorted by nearest deadline
+- Shows mission title + milestone title + days remaining
+- Red text if overdue
+
+### DashboardService
+
+`src/features/dashboard/services/dashboardService.ts`
+- `getOverallStats(userId)` — active mission count, total planned vs logged
+- `getWeeklyTrend(userId, weeks=4)` — planned/logged per week
+- `getUpcomingDeadlines(userId, limit=5)` — nearest deadlines with days remaining
+
+---
+
+## 10. Key Constants
 
 | File | Key exports |
 |---|---|
@@ -321,7 +494,7 @@ async function callGroq(prompt: string): Promise<string> {
 
 ---
 
-## 9. Development Rules
+## 11. Development Rules
 
 - Build one sprint at a time — never implement future sprint features
 - Keep the application deployable after every change
@@ -332,20 +505,20 @@ async function callGroq(prompt: string): Promise<string> {
 - Avoid duplicated code
 - Keep components small
 - Favor reusable components
-- Update README, ROADMAP, and ARCHITECTURE after every sprint
-- Record important architectural decisions in comments
+- Update GUIDE.md after every sprint
+- Record important architectural decisions in this guide
 
 ### Deployment Checklist
 
 Before merging:
 - [ ] `npm run build` succeeds
 - [ ] No console errors in browser
-- [ ] Documentation updated
+- [ ] GUIDE.md updated
 - [ ] New env vars added to Vercel
 
 ---
 
-## 10. Common Pitfalls
+## 12. Common Pitfalls
 
 1. **Cookie setting in server components** — `cookieStore.set()` throws in server components. Use the read-only `supabase-server.ts` for server components and `supabase-route-handler.ts` for route handlers.
 
@@ -355,4 +528,8 @@ Before merging:
 
 4. **Supabase anon key format** — New Supabase projects use `sb_publishable_` prefix instead of `eyJ` JWT format. Use it as `NEXT_PUBLIC_SUPABASE_ANON_KEY` — it works the same way.
 
-5. **Route groups in App Router** — Route groups `(name)` do NOT create URL segments. Two `page.tsx` files at the same level (one in a group, one without) will conflict at the same URL.
+5. **Route groups in App Router** — Route groups `(name)` do NOT create URL segments. Two `page.tsx` files at the same level (one in a group, one without) will conflict at the same URL. Always remove old pages when migrating to a route group.
+
+6. **Dark theme consistency** — Never mix light/dark classes. All pages use `bg-[#0a0a0a]` body. Inputs, textareas, and selects are styled globally in `globals.css`. Avoid inline `border-gray-300` or `text-gray-700` from old light theme.
+
+7. **`.txt` prompt files in Vercel** — `fs.readFileSync(path.resolve('src/features/ai/prompts/file.txt'))` works locally but breaks on Vercel because the CWD differs and `.txt` files are not bundled by Webpack. Always use `.ts` exports instead.

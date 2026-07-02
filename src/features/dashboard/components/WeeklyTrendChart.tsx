@@ -22,28 +22,30 @@ export function WeeklyTrendChart({ data }: WeeklyTrendChartProps) {
       month: "short",
       day: "numeric",
     }),
+    planned: d.planned || 0,
+    logged: d.logged || 0,
   }));
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <h3 className="mb-4 text-sm font-semibold text-gray-900">
-        Weekly Hours: Planned vs Logged
+    <div className="rounded-lg bg-[#111111] p-4">
+      <h3 className="mb-4 text-sm font-semibold text-white">
+        Weekly Trend
       </h3>
       {data.length === 0 ? (
-        <p className="py-8 text-center text-sm text-gray-400">
-          No weekly data yet. Complete a week to see trends.
+        <p className="py-8 text-center text-sm text-[#555]">
+          Complete a week to see trends.
         </p>
       ) : (
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={180}>
           <BarChart data={formatted} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 10, fill: "#9CA3AF" }}
+              tick={{ fontSize: 10, fill: "#555" }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: "#9CA3AF" }}
+              tick={{ fontSize: 10, fill: "#555" }}
               axisLine={false}
               tickLine={false}
               width={30}
@@ -52,23 +54,25 @@ export function WeeklyTrendChart({ data }: WeeklyTrendChartProps) {
               contentStyle={{
                 fontSize: 12,
                 borderRadius: 8,
-                border: "1px solid #E5E7EB",
+                border: "1px solid #333",
+                background: "#1a1a1a",
+                color: "#fff",
               }}
             />
             <Legend
-              wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+              wrapperStyle={{ fontSize: 11, paddingTop: 8, color: "#a1a1aa" }}
             />
             <Bar
               dataKey="planned"
               name="Planned"
-              fill="#A78BFA"
+              fill="#555"
               radius={[4, 4, 0, 0]}
               barSize={12}
             />
             <Bar
               dataKey="logged"
               name="Logged"
-              fill="#34D399"
+              fill="#8b5cf6"
               radius={[4, 4, 0, 0]}
               barSize={12}
             />

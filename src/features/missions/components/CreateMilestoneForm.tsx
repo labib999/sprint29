@@ -16,6 +16,7 @@ export function CreateMilestoneForm({
 }: CreateMilestoneFormProps) {
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [impact, setImpact] = useState(0);
   const [weeklyHours, setWeeklyHours] = useState(
     defaultWeeklyHours?.toString() ?? ""
   );
@@ -25,7 +26,6 @@ export function CreateMilestoneForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !deadline || !weeklyHours) return;
-
     setIsSubmitting(true);
     try {
       await createMilestone({
@@ -35,7 +35,6 @@ export function CreateMilestoneForm({
         weekly_committed_hours: parseFloat(weeklyHours),
         ai_context: aiContext.trim() || undefined,
       });
-      setTitle("");
       onClose();
     } catch {
       setIsSubmitting(false);
@@ -43,69 +42,86 @@ export function CreateMilestoneForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Milestone title"
-        className="block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-        autoFocus
-        disabled={isSubmitting}
-      />
+    <form onSubmit={handleSubmit} className="space-y-5 rounded-lg bg-[#1a1a1a] p-5">
+      <div>
+        <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">Title</label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Milestone title"
+          autoFocus
+          disabled={isSubmitting}
+          className="w-full"
+        />
+      </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-600">
-            Deadline
-          </label>
-          <input
-            type="date"
-            value={deadline}
-            onChange={(e) => setDeadline(e.target.value)}
-            required
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            disabled={isSubmitting}
-          />
-        </div>
+      <div>
+        <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">Deadline</label>
+        <input
+          type="date"
+          value={deadline}
+          onChange={(e) => setDeadline(e.target.value)}
+          required
+          disabled={isSubmitting}
+          className="w-full"
+        />
+      </div>
 
-        <div>
-          <label className="block text-xs font-medium text-gray-600">
-            Hrs/week
-          </label>
-          <input
-            type="number"
-            value={weeklyHours}
-            onChange={(e) => setWeeklyHours(e.target.value)}
-            required
-            min={0}
-            step={0.5}
-            placeholder={defaultWeeklyHours ? `Default: ${defaultWeeklyHours}` : "Hours"}
-            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            disabled={isSubmitting}
-          />
+      <div>
+        <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">Impact</label>
+        <div className="flex gap-1.5">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setImpact(n)}
+              className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                n <= impact
+                  ? "bg-brand-600 text-white"
+                  : "bg-[#111111] text-[#555] hover:bg-[#222]"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-600">
-          Context for AI <span className="text-gray-400">(optional)</span>
+        <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">Weekly Committed Hours</label>
+        <input
+          type="number"
+          value={weeklyHours}
+          onChange={(e) => setWeeklyHours(e.target.value)}
+          required
+          min={0}
+          step={0.5}
+          placeholder={defaultWeeklyHours ? `Default: ${defaultWeeklyHours}` : "Hours per week"}
+          disabled={isSubmitting}
+          className="w-full"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">
+          Context for AI <span className="text-[#555]">(optional)</span>
         </label>
         <textarea
           value={aiContext}
           onChange={(e) => setAiContext(e.target.value)}
-          placeholder="e.g. current level, what you've tried, specific constraints"
+          placeholder="e.g. currently at 900 CF rating, targeting 1200 by December"
           rows={2}
-          className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 resize-none"
           disabled={isSubmitting}
+          className="w-full resize-none"
         />
       </div>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 pt-2">
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900"
+          className="rounded-lg px-3 py-1.5 text-sm text-[#a1a1aa] hover:text-white"
           disabled={isSubmitting}
         >
           Cancel
@@ -113,7 +129,7 @@ export function CreateMilestoneForm({
         <button
           type="submit"
           disabled={!title.trim() || !deadline || !weeklyHours || isSubmitting}
-          className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           Add
         </button>

@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@/shared/components/Button";
-import { Card } from "@/shared/components/Card";
 import { createMission } from "@/features/missions/services/missionService";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,16 +12,15 @@ export function CreateMissionForm({ onClose }: CreateMissionFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [impact, setImpact] = useState(3);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-
     const form = new FormData(e.currentTarget);
     const title = form.get("title") as string;
     const description = form.get("description") as string;
-    const impact = parseInt(form.get("impact") as string, 10);
     const weeklyHours = form.get("default_weekly_hours") as string;
 
     if (!title || title.trim().length === 0) {
@@ -48,93 +45,65 @@ export function CreateMissionForm({ onClose }: CreateMissionFormProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-md">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">New Mission</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="w-full max-w-sm rounded-xl bg-[#111111] p-6 shadow-xl">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-white">New Mission</h2>
+          <button onClick={onClose} className="text-[#555] hover:text-white">✕</button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-500">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Title
-            </label>
-            <input
-              name="title"
-              type="text"
-              required
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              placeholder="What do you want to achieve?"
-            />
+            <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">Title</label>
+            <input name="title" type="text" required placeholder="What do you want to achieve?" className="w-full" autoFocus />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Description
-            </label>
-            <textarea
-              name="description"
-              rows={3}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              placeholder="Why is this important?"
-            />
+            <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">Description</label>
+            <textarea name="description" rows={2} placeholder="Why is this important?" className="w-full resize-none" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Impact (1-5)
-              </label>
-              <select
-                name="impact"
-                required
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              >
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>
-                    {n} - {["Minimal", "Low", "Medium", "High", "Critical"][n - 1]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Default hrs/week
-              </label>
-              <input
-                name="default_weekly_hours"
-                type="number"
-                min={0}
-                step={0.5}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                placeholder="Optional"
-              />
+          <div>
+            <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">Impact</label>
+            <div className="flex gap-1.5">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setImpact(n)}
+                  className={`w-8 h-8 rounded-full text-xs font-medium transition-colors ${
+                    n <= impact
+                      ? "bg-brand-600 text-white"
+                      : "bg-[#1a1a1a] text-[#555] hover:bg-[#222]"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" type="button" onClick={onClose}>
+          <div>
+            <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">Default hrs/week</label>
+            <input name="default_weekly_hours" type="number" min={0} step={0.5} placeholder="Optional" className="w-full" />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="rounded-lg px-3 py-1.5 text-sm text-[#a1a1aa] hover:text-white">
               Cancel
-            </Button>
-            <Button variant="primary" type="submit" isLoading={isSubmitting}>
-              Create Mission
-            </Button>
+            </button>
+            <button type="submit" disabled={isSubmitting} className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
+              {isSubmitting ? "Creating..." : "Create"}
+            </button>
           </div>
         </form>
-      </Card>
+      </div>
     </div>
   );
 }

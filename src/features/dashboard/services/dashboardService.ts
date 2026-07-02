@@ -100,7 +100,7 @@ export async function getOverallStats(): Promise<OverallStats> {
   };
 }
 
-export async function getWeeklyTrend(limit = 8): Promise<WeeklyTrend[]> {
+export async function getWeeklyTrend(limit = 4): Promise<WeeklyTrend[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -121,6 +121,59 @@ export async function getWeeklyTrend(limit = 8): Promise<WeeklyTrend[]> {
       completedTasks: (w.tasks ?? []).filter((t: any) => t.completed).length,
     }))
     .reverse();
+}
+
+export interface UpcomingDeadline {
+  id: string;
+  title: string;
+  missionTitle: string;
+  deadline: string;
+  daysRemaining: number;
+  isBehind: boolean;
+}
+
+export async function getUpcomingDeadlines(): Promise<UpcomingDeadline[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data: missions } = await supabase
+    .from("missions")
+    .select("title, milestones(id, title, deadline, hours_planned_total, hours_logged_total, weekly_committed_hours, completed)")
+    .eq("user_id", user.id)
+    .not("milestones.deadline", "is", null);
+
+  const now = Date.now();
+  const deadlines: UpcomingDeadline[] = [];
+
+  for (const mission of missions ?? []) {
+    for (const m of (mission.milestones as any[] ?? [])) {
+      if (m.completed) continue;
+      const daysRemaining = Math.ceil((new Date(m.deadline).getTime() - now) / (1000 * 60 * 60 * 24));
+      let isBehind = false;
+      if (m.hours_planned_total && daysRemaining > 0) {
+        const remaining = m.hours_planned_total - (m.hours_logged_total ?? 0);
+        if (remaining > 0) {
+          const weeksLeft = daysRemaining / 7;
+          isBehind = weeksLeft > 0 && m.weekly_committed_hours > 0 && remaining / weeksLeft > m.weekly_committed_hours * 1.5;
+        }
+      }
+      deadlines.push({
+        id: m.id,
+        title: m.title,
+        missionTitle: mission.title,
+        deadline: m.deadline,
+        daysRemaining,
+        isBehind,
+      });
+    }
+  }
+
+  return deadlines
+    .filter((d) => d.daysRemaining >= 0)
+    .sort((a, b) => a.daysRemaining - b.daysRemaining)
+    .slice(0, 5);
 }
 
 export async function getMissionProgress(): Promise<MissionProgress[]> {

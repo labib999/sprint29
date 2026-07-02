@@ -4,7 +4,6 @@ import { useAuth } from "@/features/auth/context/AuthContext";
 import { getMissions } from "@/features/missions/services/missionService";
 import { MissionCard } from "./MissionCard";
 import { CreateMissionForm } from "./CreateMissionForm";
-import { Button } from "@/shared/components/Button";
 import { useCallback, useEffect, useState } from "react";
 import type { Mission } from "@/types";
 
@@ -28,34 +27,39 @@ export function MissionList() {
 
   if (isLoading) {
     return (
-      <div className="py-12 text-center text-sm text-gray-500">
-        Loading missions...
+      <div className="space-y-3 animate-pulse">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="h-24 rounded-lg bg-[#111111]" />
+        ))}
       </div>
     );
   }
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Missions ({missions.length})
-        </h2>
-        <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
-          + New Mission
-        </Button>
-      </div>
-
       {missions.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center">
-          <p className="text-sm text-gray-500">
-            No missions yet. Create your first mission to get started.
+        <div className="rounded-lg bg-[#111111] p-8 text-center">
+          <p className="text-sm text-[#555]">
+            No missions yet.
           </p>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="mt-3 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            Create Mission
+          </button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {missions.map((mission) => (
             <MissionCard key={mission.id} mission={mission} onMutate={refresh} />
           ))}
+          <button
+            onClick={() => setShowCreate(true)}
+            className="w-full rounded-lg border border-dashed border-[#333] py-3 text-sm text-[#555] hover:border-brand-500 hover:text-brand-500 transition-colors"
+          >
+            + New Mission
+          </button>
         </div>
       )}
 

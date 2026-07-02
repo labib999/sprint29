@@ -35,33 +35,23 @@ export function MilestoneList({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       {milestones.map((milestone) => {
         const pace = computePace(milestone);
         return (
           <div key={milestone.id}>
-            <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50">
+            <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[#1a1a1a]">
               <button
                 onClick={() => handleToggle(milestone)}
                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
                   milestone.completed
-                    ? "border-brand-500 bg-brand-500 text-white"
-                    : "border-gray-300"
+                    ? "bg-brand-600 border-brand-600 text-white"
+                    : "border-[#333]"
                 }`}
               >
                 {milestone.completed && (
-                  <svg
-                    className="h-3 w-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={3}
-                      d="M5 13l4 4L19 7"
-                    />
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 )}
               </button>
@@ -69,9 +59,7 @@ export function MilestoneList({
               <div className="flex-1 min-w-0">
                 <span
                   className={`block text-sm truncate ${
-                    milestone.completed
-                      ? "text-gray-400 line-through"
-                      : "text-gray-700"
+                    milestone.completed ? "text-[#555] line-through" : "text-white"
                   }`}
                 >
                   {milestone.title}
@@ -83,7 +71,7 @@ export function MilestoneList({
 
               <button
                 onClick={() => handleDelete(milestone.id)}
-                className="text-xs text-gray-400 hover:text-red-500 shrink-0"
+                className="text-xs text-[#555] hover:text-red-500 shrink-0"
               >
                 ✕
               </button>
@@ -96,15 +84,12 @@ export function MilestoneList({
         <CreateMilestoneForm
           missionId={missionId}
           defaultWeeklyHours={defaultWeeklyHours}
-          onClose={() => {
-            setShowForm(false);
-            onMutate();
-          }}
+          onClose={() => { setShowForm(false); onMutate(); }}
         />
       ) : (
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-600 px-2"
+          className="flex items-center gap-1 text-xs text-[#555] hover:text-brand-500 px-2 py-1"
         >
           + Add milestone
         </button>

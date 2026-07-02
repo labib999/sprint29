@@ -1,6 +1,5 @@
 "use client";
 
-import { sortByPriority } from "@/features/planner/lib/priorityCalculator";
 import { TaskItem } from "./TaskItem";
 import type { Task } from "@/types";
 
@@ -10,42 +9,31 @@ interface TaskListProps {
 }
 
 export function TaskList({ tasks, onMutate }: TaskListProps) {
-  const sorted = sortByPriority(tasks);
-  const incomplete = sorted.filter((t) => !t.completed);
-  const completed = sorted.filter((t) => t.completed);
-
-  const totalPlanned = tasks.reduce((s, t) => s + t.estimated_hours, 0);
-  const totalCompleted = completed.length;
+  const incomplete = tasks.filter((t) => !t.completed);
+  const completed = tasks.filter((t) => t.completed);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between text-sm text-gray-500">
-        <span>
-          {totalCompleted}/{tasks.length} tasks
-        </span>
-        <span>{totalPlanned}h planned</span>
-      </div>
-
+    <div className="space-y-1">
       {tasks.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-400">
+        <div className="rounded-lg bg-[#1a1a1a] p-6 text-center text-sm text-[#555]">
           No tasks yet. Add one below or ask AI for suggestions.
         </div>
       ) : (
-        <div className="space-y-2">
+        <>
           {incomplete.map((task) => (
             <TaskItem key={task.id} task={task} onMutate={onMutate} />
           ))}
           {completed.length > 0 && (
-            <>
-              <div className="border-t border-gray-100 pt-3 mt-4">
-                <p className="text-xs text-gray-400 mb-2">Completed</p>
-              </div>
+            <div className="pt-3">
+              <p className="text-xs text-[#555] mb-1">
+                Completed ({completed.length})
+              </p>
               {completed.map((task) => (
                 <TaskItem key={task.id} task={task} onMutate={onMutate} />
               ))}
-            </>
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

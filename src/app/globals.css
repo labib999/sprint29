@@ -6,3 +6,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+@layer base {
+  input, textarea, select {
+    @apply border-[#333] bg-[#1a1a1a] text-white placeholder-[#555] rounded-lg px-3 py-2 text-sm;
+    @apply focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
+  }
+}
+
+@keyframes scale-in {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
