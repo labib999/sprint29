@@ -258,51 +258,53 @@ Inline forms (CreateMilestoneForm, AddTaskForm) follow:
 Client Component (AIPanel)
   → AI Service (aiService.ts)
     → API Route (/api/ai/suggest)
-      → Claude API (via fetch)
+      → Gemini 2.0 Flash (default, free) or Claude (optional)
 ```
 
 ### Key Rules
 
-1. **Prompts live in `src/features/ai/prompts/`** — never in React components
+1. **Prompts live in `src/features/ai/prompts/`** — exported as builder functions (`.ts`), not raw `.txt` files, because `fs.readFileSync` breaks in Vercel's serverless environment
 2. **App works without AI** — AI is an enhancement layer
 3. **AI only recommends** — user always decides
 4. **Graceful degradation** — AI failure shows "unavailable" message, no crash
 
+### Provider: Gemini (Default)
+
+- Free, 1,500 requests/day, no credit card required
+- Set `GEMINI_API_KEY` in `.env.local` / Vercel
+- To switch to Claude, set `AI_PROVIDER=claude` and `CLAUDE_API_KEY`
+
 ### Prompt Template Pattern
 
+```typescript
+// src/features/ai/prompts/weekly-prioritization.ts
+export function buildWeeklyPrompt(missions: Mission[]): string {
+  return `You are Sprint29...
+[prompt content with ${JSON.stringify(missions, null, 2)}]`;
+}
 ```
-You are Sprint29, an AI planning assistant.
-The user has the following missions and milestones:
-[missions data]
-[pace data]
 
-Your task: suggest weekly priorities.
-Rules:
-- Never output anything except a JSON array of tasks.
-- Each task must have: title, estimated_hours, reason.
-- Prioritize milestones that are behind pace.
-- Only suggest tasks related to existing missions.
-```
+Note: Prompts are `.ts` files exporting builder functions, NOT raw `.txt` files read via `fs.readFileSync()`. The latter breaks in Vercel's serverless runtime because the build process doesn't guarantee `.txt` files are available at runtime relative to `process.cwd()`.
 
 ### API Route
 
 ```typescript
 // src/app/api/ai/suggest/route.ts
-export async function POST(request: Request) {
-  const body = await request.json();
-  const prompt = buildPrompt(body);
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.CLAUDE_API_KEY!,
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+const PROVIDER = (process.env.AI_PROVIDER ?? "gemini") as "gemini" | "claude";
+
+async function callGemini(prompt: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+      }),
+    }
+  );
   // ...
 }
 ```
@@ -321,7 +323,9 @@ export async function POST(request: Request) {
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | All | Public, safe in client |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | All | Uses `sb_publishable_` format |
-| `CLAUDE_API_KEY` | AI features | Server-only, never in client |
+| `GEMINI_API_KEY` | AI features (default) | Get free key at aistudio.google.com |
+| `CLAUDE_API_KEY` | AI features (optional) | Only used when `AI_PROVIDER=claude` |
+| `AI_PROVIDER` | Provider switch | `gemini` (default) or `claude` |
 
 ---
 

@@ -1,7 +1,6 @@
 import { createRouteHandlerSupabaseClient } from "@/services/supabase-route-handler";
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { buildWeeklyPrompt } from "@/features/ai/prompts/weekly-prioritization";
 
 /**
  * AI suggestion endpoint.
@@ -10,9 +9,8 @@ import path from "path";
  * Set AI_PROVIDER=claude and CLAUDE_API_KEY to use Claude instead.
  *
  * Architectural decisions:
- * - Prompt template lives in a .txt file, NOT in React components
- *   (per DEVELOPMENT_GUIDE.md: "All prompts should live inside a
- *    dedicated prompts folder")
+ * - Prompt template is imported from src/features/ai/prompts/,
+ *   NOT embedded in React components
  * - This endpoint gracefully degrades — if the API key is missing or
  *   the call fails, it returns an empty suggestions array with an error
  * - The app continues functioning without AI
@@ -136,17 +134,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Load and fill prompt template
-    const promptPath = path.join(
-      process.cwd(),
-      "src",
-      "features",
-      "ai",
-      "prompts",
-      "weekly-prioritization.txt"
-    );
-    let prompt = fs.readFileSync(promptPath, "utf-8");
-    prompt = prompt.replace("{{missions}}", JSON.stringify(missions, null, 2));
+    const prompt = buildWeeklyPrompt(missions);
 
     const rawContent =
       PROVIDER === "gemini"
