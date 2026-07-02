@@ -7,6 +7,7 @@ import {
   updateWeekTotals,
   updateReflection,
   completeWeek,
+  uncompleteWeek,
 } from "@/features/planner/services/plannerService";
 import { getMissions } from "@/features/missions/services/missionService";
 import { computePace } from "@/features/missions/components/PaceIndicator";
@@ -143,6 +144,12 @@ export function WeeklyPlanner() {
     setIsCompletingWeek(false);
   }
 
+  async function handleUncompleteWeek() {
+    if (!week) return;
+    await uncompleteWeek(week.id);
+    setIsCompleted(false);
+  }
+
   function goPrevWeek() {
     setShowAddForm(false);
     setActiveMilestoneId(null);
@@ -201,8 +208,14 @@ export function WeeklyPlanner() {
         </div>
       ) : isCompleted ? (
         <>
-          <div className="rounded-lg bg-[#111111] p-3 text-sm text-brand-500">
-            Week completed
+          <div className="flex items-center justify-between rounded-lg bg-[#111111] p-3">
+            <span className="text-sm text-brand-500">Week completed</span>
+            <button
+              onClick={handleUncompleteWeek}
+              className="rounded-lg border border-[#333] px-3 py-1 text-xs text-[#a1a1aa] hover:text-white hover:border-[#555] transition-colors"
+            >
+              Reopen Week
+            </button>
           </div>
           <TaskList tasks={week.tasks ?? []} onMutate={refresh} />
           {week.reflection && (
@@ -310,10 +323,11 @@ export function WeeklyPlanner() {
             {isCompletingWeek ? "Completing..." : "Complete Week"}
           </button>
 
-          {/* AI Panel (floating trigger + slide-in) */}
-          <AIPanel missions={missions} weekId={week.id} onMutate={refresh} />
         </>
       )}
+
+      {/* AI Panel — always visible when a week exists */}
+      {week && <AIPanel missions={missions} weekId={week.id} onMutate={refresh} />}
     </div>
   );
 }

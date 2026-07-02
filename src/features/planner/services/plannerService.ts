@@ -212,6 +212,16 @@ export async function completeWeek(weekId: string): Promise<void> {
     .eq("id", weekId);
 }
 
+export async function uncompleteWeek(weekId: string): Promise<void> {
+  await supabase
+    .from("weeks")
+    .update({
+      status: "active",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", weekId);
+}
+
 export async function getWeekByStartDate(
   weekStart: string
 ): Promise<Week | null> {
