@@ -1,5 +1,5 @@
 import { createBrowserSupabaseClient } from "@/services/supabase-browser";
-import type { Week, Task, CreateTaskInput, UpdateTaskInput } from "@/types";
+import type { Week, Task, CreateTaskInput, UpdateTaskInput, Milestone } from "@/types";
 
 /**
  * Planner service — handles weeks and tasks CRUD.
@@ -143,6 +143,109 @@ export async function reorderTasks(
 
   const { error } = await supabase.from("tasks").upsert(updates);
   if (error) throw new Error(error.message);
+}
+
+export async function completeTask(
+  id: string,
+  actualHours: number
+): Promise<Task> {
+  const { data: task, error: fetchError } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) throw new Error(fetchError.message);
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({
+      completed: true,
+      actual_hours: actualHours,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  if (task.milestone_id) {
+    const { data: milestone } = await supabase
+      .from("milestones")
+      .select("hours_logged_total")
+      .eq("id", task.milestone_id)
+      .single();
+
+    if (milestone) {
+      const newLogged = (milestone.hours_logged_total ?? 0) + actualHours;
+      await supabase
+        .from("milestones")
+        .update({
+          hours_logged_total: newLogged,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", task.milestone_id);
+    }
+  }
+
+  return data;
+}
+
+export async function updateReflection(
+  weekId: string,
+  reflection: string
+): Promise<void> {
+  await supabase
+    .from("weeks")
+    .update({ reflection, updated_at: new Date().toISOString() })
+    .eq("id", weekId);
+}
+
+export async function completeWeek(weekId: string): Promise<void> {
+  await supabase
+    .from("weeks")
+    .update({
+      status: "completed",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", weekId);
+}
+
+export async function getWeekByStartDate(
+  weekStart: string
+): Promise<Week | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data } = await supabase
+    .from("weeks")
+    .select("*, tasks(*, mission:missions(*), milestone:milestones(*))")
+    .eq("user_id", user.id)
+    .eq("week_start", weekStart)
+    .order("position", { foreignTable: "tasks", ascending: true })
+    .single();
+
+  return data;
+}
+
+export async function getRecentWeeksWithTasks(limit = 8): Promise<Week[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("weeks")
+    .select("*, tasks(*, mission:missions(*), milestone:milestones(*))")
+    .eq("user_id", user.id)
+    .order("week_start", { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
 export async function updateWeekTotals(weekId: string): Promise<void> {
