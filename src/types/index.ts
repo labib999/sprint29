@@ -39,6 +39,7 @@ export interface Milestone {
   hours_planned_total: number | null;
   hours_logged_total: number;
   ai_context: string | null;
+  ai_context_expanded: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -103,6 +104,7 @@ export interface UpdateMilestoneInput {
   completed?: boolean;
   hours_logged_total?: number;
   ai_context?: string;
+  ai_context_expanded?: boolean;
 }
 
 export interface CreateTaskInput {
