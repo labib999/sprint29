@@ -4,6 +4,7 @@ export const ROUTES = {
   HOME: "/",
   LOGIN: "/login",
   DASHBOARD: "/dashboard",
+  WEEKLY: "/weekly",
   AUTH_CALLBACK: "/auth/callback",
 } as const;
 
