@@ -25,6 +25,8 @@ ${JSON.stringify(missions, null, 2)}
 
 Your task: Suggest 3-5 tasks the user should focus on this week.
 
+Some milestones include an "ai_context" field with user-provided notes (current level, what they've tried, specific constraints). Use this context to tailor suggestions — e.g., if they mention being a beginner, suggest foundational tasks; if they mention blockers, suggest unblocking steps.
+
 Rules:
 1. Prioritize milestones that are behind pace or close to deadline.
 2. Consider the user's committed weekly hours — don't suggest more total hours than what's typical.

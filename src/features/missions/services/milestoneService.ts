@@ -60,6 +60,7 @@ export async function createMilestone(
       deadline: input.deadline,
       weekly_committed_hours: input.weekly_committed_hours,
       hours_planned_total: hoursPlanned,
+      ai_context: input.ai_context ?? null,
     })
     .select()
     .single();

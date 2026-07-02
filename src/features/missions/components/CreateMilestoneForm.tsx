@@ -19,6 +19,7 @@ export function CreateMilestoneForm({
   const [weeklyHours, setWeeklyHours] = useState(
     defaultWeeklyHours?.toString() ?? ""
   );
+  const [aiContext, setAiContext] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -32,6 +33,7 @@ export function CreateMilestoneForm({
         title: title.trim(),
         deadline,
         weekly_committed_hours: parseFloat(weeklyHours),
+        ai_context: aiContext.trim() || undefined,
       });
       setTitle("");
       onClose();
@@ -83,6 +85,20 @@ export function CreateMilestoneForm({
             disabled={isSubmitting}
           />
         </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-600">
+          Context for AI <span className="text-gray-400">(optional)</span>
+        </label>
+        <textarea
+          value={aiContext}
+          onChange={(e) => setAiContext(e.target.value)}
+          placeholder="e.g. current level, what you've tried, specific constraints"
+          rows={2}
+          className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 resize-none"
+          disabled={isSubmitting}
+        />
       </div>
 
       <div className="flex justify-end gap-2">
