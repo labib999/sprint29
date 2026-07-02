@@ -99,7 +99,6 @@ export function WeeklyPlanner() {
 
   useEffect(() => {
     if (!user) return;
-    setIsLoading(true);
 
     const fetchWeek = isCurrentWeek
       ? getOrCreateCurrentWeek()
