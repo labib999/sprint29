@@ -258,7 +258,7 @@ Inline forms (CreateMilestoneForm, AddTaskForm) follow:
 Client Component (AIPanel)
   → AI Service (aiService.ts)
     → API Route (/api/ai/suggest)
-      → Gemini 2.0 Flash (default, free) or Claude (optional)
+      → Groq (llama-3.1-8b-instant)
 ```
 
 ### Key Rules
@@ -268,11 +268,11 @@ Client Component (AIPanel)
 3. **AI only recommends** — user always decides
 4. **Graceful degradation** — AI failure shows "unavailable" message, no crash
 
-### Provider: Gemini (Default)
+### Provider: Groq
 
-- Free, 1,500 requests/day, no credit card required
-- Set `GEMINI_API_KEY` in `.env.local` / Vercel
-- To switch to Claude, set `AI_PROVIDER=claude` and `CLAUDE_API_KEY`
+- Fast inference with llama-3.1-8b-instant, generous free tier
+- Get a key at https://console.groq.com/keys
+- Set `GROQ_API_KEY` in `.env.local` / Vercel
 
 ### Prompt Template Pattern
 
@@ -290,22 +290,16 @@ Note: Prompts are `.ts` files exporting builder functions, NOT raw `.txt` files 
 
 ```typescript
 // src/app/api/ai/suggest/route.ts
-const PROVIDER = (process.env.AI_PROVIDER ?? "gemini") as "gemini" | "claude";
+import Groq from "groq-sdk";
 
-async function callGemini(prompt: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
-      }),
-    }
-  );
-  // ...
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+async function callGroq(prompt: string): Promise<string> {
+  const completion = await groq.chat.completions.create({
+    messages: [{ role: "user", content: prompt }],
+    model: "llama-3.1-8b-instant",
+  });
+  return completion.choices[0]?.message?.content ?? "";
 }
 ```
 
@@ -323,9 +317,7 @@ async function callGemini(prompt: string): Promise<string> {
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | All | Public, safe in client |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | All | Uses `sb_publishable_` format |
-| `GEMINI_API_KEY` | AI features (default) | Get free key at aistudio.google.com |
-| `CLAUDE_API_KEY` | AI features (optional) | Only used when `AI_PROVIDER=claude` |
-| `AI_PROVIDER` | Provider switch | `gemini` (default) or `claude` |
+| `GROQ_API_KEY` | AI suggestions | Get key at https://console.groq.com/keys |
 
 ---
 
